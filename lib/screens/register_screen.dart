@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/auth_service.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -16,6 +17,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   String _selectedRole = 'courier';
   bool _isLoading = false;
   String? _errorMessage;
+  final AuthService _authService = AuthService();
 
   @override
   void dispose() {
@@ -37,9 +39,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
     });
 
     try {
-      // Burada Firebase Auth + Firestore kayıt işlemlerini yapabilirsin.
-      // Örn: kullanıcı oluştur + users koleksiyonuna role yaz.
-      await Future.delayed(const Duration(milliseconds: 900));
+      await _authService.register(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+        role: _selectedRole,
+      );
 
       if (!mounted) return;
 

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "979033506974",
+    "project_id": "courier-app-678ea",
+    "storage_bucket": "courier-app-678ea.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:979033506974:android:72741d7c8a6a4fa3ae278f",
+        "android_client_info": {
+          "package_name": "com.gozde.courier_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCPYHpQ8z79s0WmzX4wKI88qyRR1macUdU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

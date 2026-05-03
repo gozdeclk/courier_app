@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'login_screen.dart';
-
-enum UserRole { admin, courier }
+import '../models/user_model.dart';
+import '../services/auth_service.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({
@@ -23,13 +22,7 @@ class ProfileScreen extends StatelessWidget {
   }
 
   Future<void> _logout(BuildContext context) async {
-    // Burada FirebaseAuth.instance.signOut() gibi logout işlemini ekleyebilirsin.
-    // Şimdilik fake logout.
-
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-    );
+    await AuthService().signOut();
   }
 
   @override

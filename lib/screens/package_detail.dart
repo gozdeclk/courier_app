@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../models/user_role.dart';
+import '../models/user_model.dart';
+import '../services/firestore_service.dart';
 
-enum UserRole { admin, courier }
 
 class PackageDetailData {
   final String id;
@@ -34,10 +34,12 @@ class PackageDetailScreen extends StatefulWidget {
     super.key,
     required this.package,
     required this.currentRole,
+    required this.currentUserId,
   });
 
   final PackageDetailData package;
   final UserRole currentRole;
+  final String currentUserId;
 
   @override
   State<PackageDetailScreen> createState() => _PackageDetailScreenState();
@@ -46,6 +48,7 @@ class PackageDetailScreen extends StatefulWidget {
 class _PackageDetailScreenState extends State<PackageDetailScreen> {
   late PackageDetailData _package;
   bool _isUpdating = false;
+  final FirestoreService _firestoreService = FirestoreService();
 
   @override
   void initState() {
@@ -86,15 +89,22 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
       _isUpdating = true;
     });
 
-    // Fake update (Firestore update yerine)
-    await Future.delayed(const Duration(milliseconds: 600));
+    try {
+      await _firestoreService.updatePackageStatus(
+        packageId: _package.id,
+        newStatus: 'delivered',
+        userId: widget.currentUserId,
+      );
 
-    if (!mounted) return;
-
-    setState(() {
-      _package = _package.copyWith(status: 'delivered');
-      _isUpdating = false;
-    });
+      if (!mounted) return;
+      setState(() {
+        _package = _package.copyWith(status: 'delivered');
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _isUpdating = false);
+      }
+    }
   }
 
   @override

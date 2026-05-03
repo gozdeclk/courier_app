@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/firestore_service.dart';
 
 class CourierOption {
   final String id;
@@ -22,9 +23,11 @@ class NewPackageDraft {
 class AddPackageScreen extends StatefulWidget {
   const AddPackageScreen({
     super.key,
+    required this.adminId,
     required this.couriers,
   });
 
+  final String adminId;
   final List<CourierOption> couriers;
 
   @override
@@ -39,6 +42,7 @@ class _AddPackageScreenState extends State<AddPackageScreen> {
   CourierOption? _selectedCourier;
   bool _isLoading = false;
   String? _errorMessage;
+  final FirestoreService _firestoreService = FirestoreService();
 
   @override
   void initState() {
@@ -68,21 +72,26 @@ class _AddPackageScreenState extends State<AddPackageScreen> {
 
     setState(() => _isLoading = true);
 
-    // Fake işlem (Firestore create yerine)
-    await Future.delayed(const Duration(milliseconds: 500));
-
-    if (!mounted) return;
-
-    setState(() => _isLoading = false);
-
-    Navigator.pop(
-      context,
-      NewPackageDraft(
-        name: _nameController.text.trim(),
+    try {
+      await _firestoreService.createPackage(
+        title: _nameController.text.trim(),
         address: _addressController.text.trim(),
-        courier: _selectedCourier!,
-      ),
-    );
+        courierId: _selectedCourier!.id,
+        adminId: widget.adminId,
+      );
+
+      if (!mounted) return;
+      Navigator.pop(context);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = 'Paket eklenirken bir hata oluştu.';
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   @override

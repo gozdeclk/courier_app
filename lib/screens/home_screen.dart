@@ -1,102 +1,72 @@
 import 'package:flutter/material.dart';
-import '../models/user_role.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../widgets/package_card.dart';
 import 'add_package.dart';
 import 'package_detail.dart';
 import 'profile.dart';
-import '../models/user_role.dart';
-// import '../models/user_role.dart'; // önerilen ortak enum dosyan
-
-enum UserRole { admin, courier } // BUNU ortak dosyaya taşımanı öneriyorum.
-
-class PackageItem {
-  final String id;
-  final String name;
-  final String address;
-  final String status; // pending, assigned, delivered
-  final String assignedCourierId;
-  final String assignedCourierName;
-
-  const PackageItem({
-    required this.id,
-    required this.name,
-    required this.address,
-    required this.status,
-    required this.assignedCourierId,
-    required this.assignedCourierName,
-  });
-}
+import '../models/user_model.dart';
+import '../models/package_model.dart';
+import '../services/firestore_service.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({
-    super.key,
-    this.currentRole = UserRole.courier,
-    this.currentCourierId = 'courier_1',
-    this.currentEmail = 'user@mail.com',
-  });
-
-  final UserRole currentRole;
-  final String currentCourierId;
-  final String currentEmail;
+  const HomeScreen({super.key});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  late final List<PackageItem> _packages = [
-    const PackageItem(
-      id: 'p1',
-      name: 'Laptop Paketi',
-      address: 'Kadıköy / İstanbul',
-      status: 'pending',
-      assignedCourierId: 'courier_1',
-      assignedCourierName: 'Ali Veli',
-    ),
-    const PackageItem(
-      id: 'p2',
-      name: 'Telefon Kutusu',
-      address: 'Beşiktaş / İstanbul',
-      status: 'assigned',
-      assignedCourierId: 'courier_2',
-      assignedCourierName: 'Ayşe Yılmaz',
-    ),
-    const PackageItem(
-      id: 'p3',
-      name: 'Evrak Teslimi',
-      address: 'Çankaya / Ankara',
-      status: 'delivered',
-      assignedCourierId: 'courier_1',
-      assignedCourierName: 'Ali Veli',
-    ),
-  ];
+  final FirestoreService _firestoreService = FirestoreService();
+  AppUser? _currentUser;
+  bool _isLoadingUser = true;
 
-  List<PackageItem> _visiblePackages() {
-    if (widget.currentRole == UserRole.admin) return _packages;
-    return _packages
-        .where((p) => p.assignedCourierId == widget.currentCourierId)
-        .toList();
+  @override
+  void initState() {
+    super.initState();
+    _loadCurrentUser();
+  }
+
+  Future<void> _loadCurrentUser() async {
+    final authUser = FirebaseAuth.instance.currentUser;
+    if (authUser == null) {
+      if (!mounted) return;
+      setState(() => _isLoadingUser = false);
+      return;
+    }
+
+    try {
+      final appUser = await _firestoreService.getUserById(authUser.uid);
+      if (!mounted) return;
+      setState(() {
+        _currentUser = appUser;
+        _isLoadingUser = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isLoadingUser = false);
+    }
   }
 
   Future<void> _openProfile() async {
+    if (_currentUser == null) return;
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => ProfileScreen(
-          email: widget.currentEmail,
-          role: widget.currentRole,
+          email: _currentUser!.email,
+          role: _currentUser!.role,
         ),
       ),
     );
   }
 
   Future<void> _openAddPackage() async {
-    if (widget.currentRole != UserRole.admin) return;
-
-    final result = await Navigator.push<NewPackageDraft>(
+    if (_currentUser?.role != UserRole.admin) return;
+    await Navigator.push<void>(
       context,
       MaterialPageRoute(
-        builder: (_) => const AddPackageScreen(
+        builder: (_) => AddPackageScreen(
+          adminId: _currentUser!.id,
           couriers: [
             CourierOption(id: 'courier_1', name: 'Ali Veli'),
             CourierOption(id: 'courier_2', name: 'Ayşe Yılmaz'),
@@ -104,35 +74,21 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     );
-
-    if (result == null) return;
-
-    setState(() {
-      _packages.insert(
-        0,
-        PackageItem(
-          id: DateTime.now().millisecondsSinceEpoch.toString(),
-          name: result.name,
-          address: result.address,
-          status: 'assigned',
-          assignedCourierId: result.courier.id,
-          assignedCourierName: result.courier.name,
-        ),
-      );
-    });
   }
 
-  void _openPackageDetail(PackageItem pkg) {
+  void _openPackageDetail(PackageModel pkg) {
+    if (_currentUser == null) return;
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => PackageDetailScreen(
-          currentRole: widget.currentRole,
+          currentRole: _currentUser!.role,
+          currentUserId: _currentUser!.id,
           package: PackageDetailData(
             id: pkg.id,
-            name: pkg.name,
+            name: pkg.title,
             address: pkg.address,
-            assignedCourierName: pkg.assignedCourierName,
+            assignedCourierName: pkg.courierId,
             status: pkg.status,
           ),
         ),
@@ -142,8 +98,19 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final packages = _visiblePackages();
-    final isAdmin = widget.currentRole == UserRole.admin;
+    if (_isLoadingUser) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_currentUser == null) {
+      return const Scaffold(
+        body: Center(child: Text('Kullanıcı bilgisi alınamadı.')),
+      );
+    }
+
+    final isAdmin = _currentUser!.role == UserRole.admin;
 
     return Scaffold(
       appBar: AppBar(
@@ -156,21 +123,40 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      body: packages.isEmpty
-          ? const Center(child: Text('Gösterilecek paket bulunamadı.'))
-          : ListView.separated(
-              padding: const EdgeInsets.all(16),
-              itemCount: packages.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 10),
-              itemBuilder: (context, index) {
-                final pkg = packages[index];
-                return PackageCard(
-                  packageName: pkg.name,
-                  status: pkg.status,
-                  onTap: () => _openPackageDetail(pkg),
-                );
-              },
-            ),
+      body: StreamBuilder<List<PackageModel>>(
+        stream: _firestoreService.watchPackagesForRole(
+          role: _currentUser!.role,
+          userId: _currentUser!.id,
+        ),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+            return const Center(child: Text('Paketler yüklenirken hata oluştu.'));
+          }
+
+          final packages = snapshot.data ?? [];
+          if (packages.isEmpty) {
+            return const Center(child: Text('Gösterilecek paket bulunamadı.'));
+          }
+
+          return ListView.separated(
+            padding: const EdgeInsets.all(16),
+            itemCount: packages.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 10),
+            itemBuilder: (context, index) {
+              final pkg = packages[index];
+              return PackageCard(
+                packageName: pkg.title,
+                status: pkg.status,
+                onTap: () => _openPackageDetail(pkg),
+              );
+            },
+          );
+        },
+      ),
       floatingActionButton: isAdmin
           ? FloatingActionButton(
               onPressed: _openAddPackage,

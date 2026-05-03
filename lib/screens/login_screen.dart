@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'home_screen.dart';
-// import 'register_screen.dart'; // register ekranın hazırsa aç
+import 'register_screen.dart';
+import '../services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -12,6 +13,7 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final AuthService _authService = AuthService();
 
   bool _isLoading = false;
   String? _errorMessage;
@@ -38,23 +40,26 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
-    // Burada Firebase Auth çağrını yapabilirsin.
-    await Future.delayed(const Duration(milliseconds: 800));
+    try {
+      await _authService.signIn(email: email, password: password);
 
-    if (!mounted) return;
-
-    setState(() {
-      _isLoading = false;
-    });
-
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const HomeScreen()),
-    );
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = 'Giriş başarısız. Bilgilerinizi kontrol edin.';
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   @override
@@ -144,11 +149,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 14),
                   TextButton(
                     onPressed: () {
-                      // register ekranın hazırsa bunu kullan:
-                      // Navigator.push(
-                      //   context,
-                      //   MaterialPageRoute(builder: (_) => const RegisterScreen()),
-                      // );
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                      );
                     },
                     child: const Text('Hesabın yok mu? Kayıt ol'),
                   ),
