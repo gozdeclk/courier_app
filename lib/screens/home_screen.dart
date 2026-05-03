@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-
+import '../models/user_role.dart';
 import '../widgets/package_card.dart';
 import 'add_package.dart';
 import 'package_detail.dart';
 import 'profile.dart';
+import '../models/user_role.dart';
 // import '../models/user_role.dart'; // önerilen ortak enum dosyan
 
 enum UserRole { admin, courier } // BUNU ortak dosyaya taşımanı öneriyorum.
