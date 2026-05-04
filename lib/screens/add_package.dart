@@ -25,10 +25,15 @@ class AddPackageScreen extends StatefulWidget {
     super.key,
     required this.adminId,
     required this.couriers,
+    this.embeddedInShell = false,
+    this.onPackageAdded,
   });
 
   final String adminId;
   final List<CourierOption> couriers;
+  /// Alt sekmede gösterilirken üst [Scaffold] dışarıda tanımlıdır.
+  final bool embeddedInShell;
+  final VoidCallback? onPackageAdded;
 
   @override
   State<AddPackageScreen> createState() => _AddPackageScreenState();
@@ -81,7 +86,20 @@ class _AddPackageScreenState extends State<AddPackageScreen> {
       );
 
       if (!mounted) return;
-      Navigator.pop(context);
+      if (widget.embeddedInShell) {
+        _nameController.clear();
+        _addressController.clear();
+        _formKey.currentState?.reset();
+        if (widget.couriers.isNotEmpty) {
+          _selectedCourier = widget.couriers.first;
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Paket başarıyla eklendi.')),
+        );
+        widget.onPackageAdded?.call();
+      } else {
+        Navigator.pop(context);
+      }
     } catch (_) {
       if (!mounted) return;
       setState(() {
@@ -94,120 +112,127 @@ class _AddPackageScreenState extends State<AddPackageScreen> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Paket Ekle')),
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextFormField(
-                      controller: _nameController,
-                      decoration: InputDecoration(
-                        labelText: 'Paket adı',
-                        prefixIcon: const Icon(Icons.inventory_2_outlined),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
+  Widget _buildFormBody(BuildContext context) {
+    return SafeArea(
+      child: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: _nameController,
+                    decoration: InputDecoration(
+                      labelText: 'Paket adı',
+                      prefixIcon: const Icon(Icons.inventory_2_outlined),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
                       ),
-                      validator: (value) {
-                        final v = (value ?? '').trim();
-                        if (v.isEmpty) return 'Paket adı boş bırakılamaz.';
-                        return null;
-                      },
                     ),
-                    const SizedBox(height: 14),
-                    TextFormField(
-                      controller: _addressController,
-                      minLines: 2,
-                      maxLines: 4,
-                      decoration: InputDecoration(
-                        labelText: 'Adres',
-                        prefixIcon: const Icon(Icons.location_on_outlined),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
+                    validator: (value) {
+                      final v = (value ?? '').trim();
+                      if (v.isEmpty) return 'Paket adı boş bırakılamaz.';
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 14),
+                  TextFormField(
+                    controller: _addressController,
+                    minLines: 2,
+                    maxLines: 4,
+                    decoration: InputDecoration(
+                      labelText: 'Adres',
+                      prefixIcon: const Icon(Icons.location_on_outlined),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
                       ),
-                      validator: (value) {
-                        final v = (value ?? '').trim();
-                        if (v.isEmpty) return 'Adres boş bırakılamaz.';
-                        return null;
-                      },
                     ),
-                    const SizedBox(height: 14),
-                    DropdownButtonFormField<CourierOption>(
-                      value: _selectedCourier,
-                      decoration: InputDecoration(
-                        labelText: 'Kurye',
-                        prefixIcon: const Icon(Icons.badge_outlined),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
+                    validator: (value) {
+                      final v = (value ?? '').trim();
+                      if (v.isEmpty) return 'Adres boş bırakılamaz.';
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 14),
+                  DropdownButtonFormField<CourierOption>(
+                    value: _selectedCourier,
+                    decoration: InputDecoration(
+                      labelText: 'Kurye',
+                      prefixIcon: const Icon(Icons.badge_outlined),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
                       ),
-                      items: widget.couriers
-                          .map(
-                            (c) => DropdownMenuItem(
-                              value: c,
-                              child: Text(c.name),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: _isLoading ? null : (v) => setState(() => _selectedCourier = v),
-                      validator: (value) {
-                        if (value == null) return 'Lütfen bir kurye seçin.';
-                        return null;
-                      },
                     ),
-                    const SizedBox(height: 12),
-                    if (_errorMessage != null)
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.red.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: Colors.red.withValues(alpha: 0.25)),
-                        ),
-                        child: Text(
-                          _errorMessage!,
-                          style: const TextStyle(color: Colors.red),
-                        ),
-                      ),
-                    if (_errorMessage != null) const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 48,
-                      child: ElevatedButton(
-                        onPressed: _isLoading ? null : _handleAdd,
-                        style: ElevatedButton.styleFrom(
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
+                    items: widget.couriers
+                        .map(
+                          (c) => DropdownMenuItem(
+                            value: c,
+                            child: Text(c.name),
                           ),
-                        ),
-                        child: _isLoading
-                            ? const SizedBox(
-                                width: 22,
-                                height: 22,
-                                child: CircularProgressIndicator(strokeWidth: 2.4),
-                              )
-                            : const Text('Paket Ekle'),
+                        )
+                        .toList(),
+                    onChanged: _isLoading ? null : (v) => setState(() => _selectedCourier = v),
+                    validator: (value) {
+                      if (value == null) return 'Lütfen bir kurye seçin.';
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  if (_errorMessage != null)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.red.withValues(alpha: 0.25)),
+                      ),
+                      child: Text(
+                        _errorMessage!,
+                        style: const TextStyle(color: Colors.red),
                       ),
                     ),
-                  ],
-                ),
+                  if (_errorMessage != null) const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton(
+                      onPressed: _isLoading ? null : _handleAdd,
+                      style: ElevatedButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: _isLoading
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(strokeWidth: 2.4),
+                            )
+                          : const Text('Paket Ekle'),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
         ),
       ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.embeddedInShell) {
+      return _buildFormBody(context);
+    }
+    return Scaffold(
+      appBar: AppBar(title: const Text('Paket Ekle')),
+      body: _buildFormBody(context),
     );
   }
 }
